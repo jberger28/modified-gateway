@@ -272,8 +272,6 @@ ThingsController.put(
     const seq  = request.body["sequenceNumber"];
 
     if (seq === -1) {
-      console.log("Requests: " + cassie.requests);
-      console.log("Notifications " + cassie.notifications);
       let wrong = 0; // counts wrong values sent in notifications
       let str = '';
       let correctnessStr = "";
