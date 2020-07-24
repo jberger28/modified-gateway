@@ -17,11 +17,16 @@ const Events = require('../models/events');
 const {MessageType} = require('gateway-addon').Constants;
 const PropertyProxy = require('./property-proxy');
 
+const cassie = require('../cassie')
+
 class DeviceProxy extends Device {
 
   constructor(adapter, deviceDict) {
     super(adapter, deviceDict.id);
-
+    cassie.initDevice(this.id, deviceDict.properties)
+    .then(()=> console.log("device " + deviceDict.id + "initialized successfully"))
+    .catch((err) => console.log("error!"));
+    
     this.title = deviceDict.title;
     this['@context'] =
       deviceDict['@context'] || 'https://iot.mozilla.org/schemas';

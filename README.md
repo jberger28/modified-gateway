@@ -1,4 +1,4 @@
-# WebThings Gateway by Mozilla
+n# WebThings Gateway by Mozilla
 
 [![Build Status](https://github.com/mozilla-iot/gateway/workflows/Build/badge.svg)](https://github.com/mozilla-iot/gateway/actions?query=workflow%3ABuild)
 [![codecov](https://codecov.io/gh/mozilla-iot/gateway/branch/master/graph/badge.svg)](https://codecov.io/gh/mozilla-iot/gateway)

@@ -74,6 +74,8 @@ const API = {
       body: JSON.stringify(data),
     };
 
+    console.log(opts);
+
     return fetch(url, opts).then((res) => {
       if (!res.ok) {
         throw new Error(res.status);

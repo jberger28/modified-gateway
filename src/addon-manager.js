@@ -34,6 +34,8 @@ const {ncp} = require('ncp');
 
 const pkg = require('../package.json');
 
+const cassie = require('./cassie');
+
 let PluginServer;
 
 /**
@@ -45,6 +47,7 @@ class AddonManager extends EventEmitter {
 
   constructor() {
     super();
+    this.cassie = cassie;
     this.adapters = new Map();
     this.notifiers = new Map();
     this.apiHandlers = new Map();

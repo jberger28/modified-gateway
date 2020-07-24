@@ -91,7 +91,7 @@ class Plugin {
     };
   }
 
-  onMsg(msg) {
+  async onMsg(msg) {
     DEBUG && console.log('Plugin: Rcvd Msg', msg);
 
     // The first switch manages action method resolved or rejected messages.
@@ -413,7 +413,7 @@ class Plugin {
         if (device) {
           property = device.findProperty(msg.data.property.name);
           if (property) {
-            property.doPropertyChanged(msg.data.property);
+            await property.doPropertyChanged(msg.data.property);
             if (property.isVisible()) {
               device.notifyPropertyChanged(property);
             }

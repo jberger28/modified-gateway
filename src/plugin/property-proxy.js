@@ -12,6 +12,7 @@
 const Deferred = require('../deferred');
 const {Property} = require('gateway-addon');
 const {MessageType} = require('gateway-addon').Constants;
+const cassie = require('../cassie');
 
 class PropertyProxy extends Property {
   constructor(device, propertyName, propertyDict) {
@@ -43,9 +44,9 @@ class PropertyProxy extends Property {
    * Called whenever a property changed notification is received
    * from the adapter.
    */
-  doPropertyChanged(propertyDict) {
+  async doPropertyChanged(propertyDict) {
     this.propertyDict = Object.assign({}, propertyDict);
-    this.setCachedValue(propertyDict.value);
+    await this.setCachedValue(propertyDict.value);
     if (propertyDict.hasOwnProperty('title')) {
       this.title = propertyDict.title;
     }
@@ -111,6 +112,17 @@ class PropertyProxy extends Property {
         reject(error);
       });
     });
+  }
+
+  // Write property value to Cassandra database
+  async setCachedValue(value) {
+    await cassie.write(this.device.id, this.name, value);
+  }
+  
+// Read property value from Cassandra database
+  async getValue() {
+    let cassValue = await cassie.read(this.device.id, this.name);
+    return cassValue;
   }
 }
 

@@ -20,6 +20,7 @@ const PromiseRouter = require('express-promise-router');
 const Settings = require('../models/settings');
 const Things = require('../models/things');
 const WebSocket = require('ws');
+const cassie = require('../cassie');
 
 const ThingsController = PromiseRouter();
 
@@ -30,6 +31,11 @@ const ThingsController = PromiseRouter();
  */
 ThingsController.ws('/:thingId/', websocketHandler);
 ThingsController.ws('/', websocketHandler);
+
+cassie.client.on('consistencyError', (msg) => {
+  if (! msg.startsWith('finished'))
+    console.log("CONSISTENCY ERROR " + msg) 
+});
 
 /**
  * Get a list of Things.
@@ -255,16 +261,43 @@ ThingsController.get(
 ThingsController.put(
   '/:thingId/properties/:propertyName',
   async (request, response) => {
+
     const thingId = request.params.thingId;
     const propertyName = request.params.propertyName;
     if (!request.body || typeof request.body[propertyName] === 'undefined') {
       response.status(400).send('Invalid property name');
       return;
     }
+
+    const seq  = request.body["sequenceNumber"];
+
+    if (seq === -1) {
+      console.log("Requests: " + cassie.requests);
+      console.log("Notifications " + cassie.notifications);
+      let wrong = 0; // counts wrong values sent in notifications
+      let str = '';
+      
+      let length = cassie.requests.length;
+      for (let i = 0; i < length; i++) {
+        let request = cassie.requests.shift();
+        let notification = cassie.notifications.shift();
+        if (typeof notification != undefined && request !== notification) 
+          wrong ++;
+        str = str + request + " | " + notification + "\n";
+      }
+      response.status(400).send("Number of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\n\n" + str);
+      cassie.count = 0;
+      cassie.requests = [];
+      cassie.notifications = [];
+      return
+    }
+
     const value = request.body[propertyName];
+    cassie.requests.push(value);
+
     try {
       const updatedValue = await Things.setThingProperty(thingId, propertyName,
-                                                         value);
+                                                          value);
       const result = {
         [propertyName]: updatedValue,
       };
@@ -412,16 +445,20 @@ function websocketHandler(websocket, request) {
     });
   }
 
-  function onPropertyChanged(property) {
+  async function onPropertyChanged(property) {
     if (typeof thingId !== 'undefined' && property.device.id !== thingId) {
       return;
     }
 
+    cassie.count++;
+    let value = await property.getValue();
+
+    cassie.notifications.push(value);
     sendMessage({
       id: property.device.id,
       messageType: Constants.PROPERTY_STATUS,
       data: {
-        [property.name]: property.value,
+        [property.name]: value,
       },
     });
   }
