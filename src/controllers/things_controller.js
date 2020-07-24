@@ -276,19 +276,48 @@ ThingsController.put(
       console.log("Notifications " + cassie.notifications);
       let wrong = 0; // counts wrong values sent in notifications
       let str = '';
+      let correctnessStr = "";
+      let correctReq = 0; // counts correct requests received by gateway
+      let incorrectReq = 0; // count incorrect requests received by gateway
       
       let length = cassie.requests.length;
       for (let i = 0; i < length; i++) {
         let request = cassie.requests.shift();
+        
+        // Determine if requests were received by gateway in correct order (should be alternating true/false)
+        let correct;
+        if (i % 2 === 0)
+          correct = request === true;
+        else 
+          correct = request === false;
+        
+        // Increment count of requests received correctly or incorrectly
+        if (correct)
+          correctReq++;
+        else
+          incorrectReq++
+
+        if(incorrectReq === 0)
+          correctnessStr = correctReq + " requests received by gateway, all with correct values."
+        else
+          correctnessStr = correctReq + " requests received by gateway with correct values, " + incorrectReq + " with incorrect values."
+
         let notification = cassie.notifications.shift();
         if (notification !== undefined && request !== notification) 
           wrong ++;
-        str = str + request + " | " + notification + "\n";
+        str = str + "Request number: " + i + " | " + request + " | " + notification + "\n";
       }
-      response.status(400).send("Number of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\n\n" + str);
+      response.status(400).send(correctnessStr + "\nNumber of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\n\n" + str);
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
+      return
+    }
+    else if (seq === -2) {
+      cassie.count = 0;
+      cassie.requests = [];
+      cassie.notifications = [];
+      response.status(200).send("gateway ready to go");
       return
     }
 
