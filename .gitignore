@@ -8,7 +8,6 @@ tmp/
 
 # Build artifacts
 /build
-node_modules/
 static/js/lib/stm_web.min.js
 npm-debug.log
 
