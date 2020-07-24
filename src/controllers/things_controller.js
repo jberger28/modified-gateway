@@ -281,7 +281,7 @@ ThingsController.put(
       for (let i = 0; i < length; i++) {
         let request = cassie.requests.shift();
         let notification = cassie.notifications.shift();
-        if (typeof notification != undefined && request !== notification) 
+        if (notification !== undefined && request !== notification) 
           wrong ++;
         str = str + request + " | " + notification + "\n";
       }
