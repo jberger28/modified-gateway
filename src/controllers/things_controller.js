@@ -305,7 +305,18 @@ ThingsController.put(
           wrong ++;
         str = str + "Request number: " + i + " | " + request + " | " + notification + "\n";
       }
-      response.status(400).send(correctnessStr + "\nNumber of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\n\n" + str);
+
+      // calculate number of overlapping time intervals
+      cassie.intervals.sort((a,b) => a.start - b.start) // sort intervals by start time
+      let overlapping = 0;
+
+      // count number of overlapping intervals
+      for (let i = 0; i < cassie.intervals.length; i++)
+        for (let j = 0; j < i; j++)
+          if (cassie.intervals[j].finish > cassie.intervals[i].finish)
+            overlapping ++;
+
+      response.status(400).send(correctnessStr + "\nNumber of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\n PropertyChanged Notifications sent by adapter: " + cassie.sentByAdapter+ "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
@@ -315,6 +326,8 @@ ThingsController.put(
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
+      cassie.intervals = [];
+      cassie.sentByAdapter = 0;
       response.status(200).send("gateway ready to go");
       return
     }

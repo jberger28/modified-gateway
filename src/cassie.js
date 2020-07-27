@@ -26,9 +26,11 @@ class Cassie {
     this.count = 0; // used to count notifications sent to web app
     this.requests = [] // used to keep track of incoming http request values
     this.notifications = [] // used to keep track of notifications being sent back to web app
+    this.intervals = [] // keeps track of time intervals in which Cassandra updates occur
 
     this.pending = {}; // keepts track of pending delayed executions
     this.finished = []; // keeps track of delayed executions that have already finished
+    this.sentByAdapter = 0;
 
     this.client = new cassandra.Client({ 
       contactPoints: ['45.56.103.71', '172.104.25.116', '50.116.63.121', '172.104.9.37', '23.239.10.53'],
@@ -130,8 +132,14 @@ class Cassie {
       // Execute UPDATE query    
       let query = 'UPDATE ' + deviceId + ' SET ' + propertyName + '=' + value + ' WHERE id=\'state\';';
 
+      const interval = {};
+      interval.start = Date.now();
       this.execute(query)
-      .then(() => resolve())
+      .then(() => {
+        interval.finish = Date.now();
+        this.intervals.push(interval);
+        resolve()
+      })
     })
   }
 
