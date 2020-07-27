@@ -316,7 +316,7 @@ ThingsController.put(
           if (cassie.intervals[j].finish > cassie.intervals[i].finish)
             overlapping ++;
 
-      response.status(400).send(correctnessStr + "\nNumber of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\n PropertyChanged Notifications sent by adapter: " + cassie.sentByAdapter+ "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
+      response.status(400).send(correctnessStr + "\nNumber of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\nPropertyChanged Notifications sent by adapter: " + cassie.sentByAdapter+ "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
