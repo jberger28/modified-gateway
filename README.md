@@ -47,7 +47,7 @@ npm start
 After starting the gateway:
 Load `http://localhost:8080` in web browser, and follow instructions to set up domain name and register.
 
-## Prerequisites for Building (taken from original repository here: https://github.com/mozilla-iot/gateway)
+## Prerequisites for Building (from original repo: https://github.com/mozilla-iot/gateway)
 
 ### Update Package Cache (Linux only)
 
@@ -208,38 +208,6 @@ $ sudo dnf install python2-pip python3-pip
 $ sudo python2 -m pip install six
 $ sudo python3 -m pip install git+https://github.com/mozilla-iot/gateway-addon-python#egg=gateway_addon
 ```
-
-
-
-* Set up domain:
-    * If you plan to use Mozilla's provided tunneling service to set up a `*.mozilla-iot.org` domain:
-        * Start the web server:
-
-            ```
-            $ npm start
-            ```
-
-        * Load `http://localhost:8080` in your web browser (or use the server's IP address if loading remotely). Then follow the instructions on the web page to set up domain and register. Once this is done you can load
-`https://localhost:4443` in your web browser (or use the server's IP address if loading remotely).
-    * If you plan to use your own SSL certificate:
-        * The HTTPS server looks for `privatekey.pem` and `certificate.pem` in the `ssl` sub-directory of the `userProfile` directory specified in your config. You can use a real certificate or generate a self-signed one by following the steps below.
-
-            ```
-            $ MOZIOT_HOME="${MOZIOT_HOME:=${HOME}/.mozilla-iot}"
-            $ SSL_DIR="${MOZIOT_HOME}/ssl"
-            $ [ ! -d "${SSL_DIR}" ] && mkdir -p "${SSL_DIR}"
-            $ openssl genrsa -out "${SSL_DIR}/privatekey.pem" 2048
-            $ openssl req -new -sha256 -key "${SSL_DIR}/privatekey.pem" -out "${SSL_DIR}/csr.pem"
-            $ openssl x509 -req -in "${SSL_DIR}/csr.pem" -signkey "${SSL_DIR}/privatekey.pem" -out "${SSL_DIR}/certificate.pem"
-            ```
-
-        * Start the web server:
-
-            ```
-            $ npm start
-            ```
-
-        * Load `https://localhost:4443` in your web browser (or use the server's IP address if loading remotely). Since you're using a self-signed certificate, you'll need to add a security exception in the browser.
 
 ## Browser Support
 
