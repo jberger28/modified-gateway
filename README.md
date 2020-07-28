@@ -3,9 +3,9 @@
 Web of Things gateway connected to a distibuted, NoSQL Cassandra database.
 
 See prerequisites for building below. Then, run the following: 
-### Install One Gateway Version
+### Install Regular (One Gateway) Version
 ```
-$ git clone -b multiple-gateways https://github.com/jberger28/modified-gateway
+$ git clone https://github.com/jberger28/modified-gateway
 ```
 
 ### Install Multiple Gateway Version
