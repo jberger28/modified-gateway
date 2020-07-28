@@ -58,7 +58,7 @@ class Cassie {
 
     // Set up event listener for notification that delayed request has finished executing
     this.client.on('finishedProcessing', (msg) => {
-      console.log("DELAYED HAS FINISHED EXECUTING!! " + msg);
+      // console.log("DELAYED HAS FINISHED EXECUTING!! " + msg);
       let ts = msg.slice(msg.indexOf(' ') + 1); // the timestamp sent by the server
 
       // if we know request is pending, resolve corresponding promise
@@ -168,11 +168,15 @@ class Cassie {
       // Execute UPDATE query    
       let query = 'UPDATE ' + deviceId + ' SET ' + propertyName + '=' + value + ' WHERE id=\'state\';';
 
+      const interval = {};
+      interval.start = Date.now();
       this.execute(query)
       .then((result) => {
+        interval.finish = Date.now();
+        this.intervals.push(interval);
         if (result.info.warnings && result.info.warnings[0] == "DELAY")
         {
-          console.log("REQUEST DELAYED WITH TIMESTAMP: " + result.info.warnings[1]);
+          // console.log("REQUEST DELAYED WITH TIMESTAMP: " + result.info.warnings[1]);
           this.delayedRequests++;
           let ts = result.info.warnings[1]; // the timestamp returned by the server
             

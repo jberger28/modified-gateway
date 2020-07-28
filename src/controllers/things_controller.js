@@ -32,10 +32,12 @@ const ThingsController = PromiseRouter();
 ThingsController.ws('/:thingId/', websocketHandler);
 ThingsController.ws('/', websocketHandler);
 
+/*
 cassie.client.on('consistencyError', (msg) => {
   if (! msg.startsWith('finished'))
     console.log("CONSISTENCY ERROR " + msg) 
 });
+*/
 
 /**
  * Get a list of Things.
