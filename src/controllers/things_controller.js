@@ -288,14 +288,19 @@ ThingsController.put(
         timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
       
       const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
-      avgUpdate = Math.round(findAvg(timeBetween));
+      if (timeBetween.length > 0)
+        avgUpdate = Math.round(findAvg(timeBetween));
+      else 
+        avgUpdate = 0;
 
       // count average time between cassandra writes
       timeBetween = [];
       for (let i = 1; i < cassie.intervals.length; i++)
         timeBetween.push(cassie.intervals[i].start - cassie.intervals[i-1].start);
       
-      avgWrite = Math.round(findAvg(timeBetween));
+      if(timeBetween.length > 0)
+        avgWrite = Math.round(findAvg(timeBetween));
+      else avgWrite = 0;
       
 
       let length = cassie.requests.length;
