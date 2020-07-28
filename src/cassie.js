@@ -31,6 +31,10 @@ class Cassie {
     this.pending = {}; // keepts track of pending delayed executions
     this.finished = []; // keeps track of delayed executions that have already finished
 
+    this.localDetectionErrors = 0;
+    this.globalDetectionErrors = 0;
+    this.notPersistedErrors = 0;
+    this.delayedRequests = 0;
  
 
     this.client = new cassandra.Client({ 
