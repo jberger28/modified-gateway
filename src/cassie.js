@@ -31,6 +31,10 @@ class Cassie {
     this.pending = {}; // keepts track of pending delayed executions
     this.finished = []; // keeps track of delayed executions that have already finished
 
+    this.localDetectionErrors = 0;
+    this.globalDetectionErrors = 0;
+    this.notPersistedErrors = 0;
+    this.delayedRequests = 0;
     this.client = new cassandra.Client({ 
       contactPoints: ['45.56.103.71', '172.104.25.116', '50.116.63.121', '172.104.9.37', '23.239.10.53'],
       // contactPoints: ['localhost'],
@@ -43,7 +47,15 @@ class Cassie {
       else console.log('Connected to Cassandra cluster');
     });
 
-    /* COMMENTED OUT FOR BENCHMARK TEST
+    this.client.on('consistencyError', (msg) => {
+      if (msg.startsWith('Local Detection'))
+        this.localDetectionErrors++;
+      else if (msg.startsWith('Global detection concurrent writes'))
+        this.globalDetectionErrors++;
+      else if (msg.startsWith('Global detection update not persisted'))
+        this.notPersistedErrors++;
+    })
+
     // Set up event listener for notification that delayed request has finished executing
     this.client.on('finishedProcessing', (msg) => {
       console.log("DELAYED HAS FINISHED EXECUTING!! " + msg);
@@ -59,7 +71,6 @@ class Cassie {
         this.finished.push(ts);
       }
     })
-    */
   }
 
   // Create a table representing the state of a device,
@@ -162,6 +173,7 @@ class Cassie {
         if (result.info.warnings && result.info.warnings[0] == "DELAY")
         {
           console.log("REQUEST DELAYED WITH TIMESTAMP: " + result.info.warnings[1]);
+          this.delayedRequests++;
           let ts = result.info.warnings[1]; // the timestamp returned by the server
             
           // if execution finished before we got notification that request was delayed

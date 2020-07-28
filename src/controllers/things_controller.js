@@ -355,6 +355,10 @@ ThingsController.put(
       cassie.requests = [];
       cassie.notifications = [];
       cassie.intervals = [];
+      cassie.delayedRequests = 0;
+      cassie.localDetectionErrors = 0;
+      cassie.globalDetectionErrors = 0;
+      cassie.notPersistedErrors = 0;
       response.status(200).send("gateway ready to go");
       return
     }
