@@ -1,6 +1,10 @@
 # Mozilla WebThings Gateway with Modifications by Jared Berger, Karol Regula, and Kelly Shaw
 
-Web of Things gateway connected to a distibuted, NoSQL Cassandra database.
+Web of Things gateway connected to a distibuted, NoSQL Cassandra database. Modifications made to open-source Mozilla gateway hosted at https://github.com/mozilla-iot/gateway
+
+Cassandra connection uses: 
+* Modified Cassandra Node.js driver (https://github.com/jberger28/modified-nodejsdriver)
+* Cassandra server with local and global detection schemes implemented by Will Burford (https://github.com/jberger28/will-cassandra-with-modifications)
 
 See prerequisites for building below. Then, run the following: 
 ### Install Regular (One Gateway) Version
