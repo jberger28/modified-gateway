@@ -277,7 +277,25 @@ ThingsController.put(
       let correctnessStr = "";
       let correctReq = 0; // counts correct requests received by gateway
       let incorrectReq = 0; // count incorrect requests received by gateway
+      let avgUpdate;
+      let avgWrite;
+
+      // count average time between consecutive browser updates
+      let timeBetween = [];
+      for (let i = 1; i < cassie.notifications.length; i++)
+        timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
       
+      const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
+      avgUpdate = Math.round(findAvg(timeBetween));
+
+      // count average time between cassandra writes
+      timeBetween = [];
+      for (let i = 1; i < cassie.intervals.length; i++)
+        timeBetween.push(cassie.intervals[i].start - cassie.intervals[i-1].start);
+      
+      avgWrite = Math.round(findAvg(timeBetween));
+      
+
       let length = cassie.requests.length;
       for (let i = 0; i < length; i++) {
         let request = cassie.requests.shift();
@@ -285,9 +303,9 @@ ThingsController.put(
         // Determine if requests were received by gateway in correct order (should be alternating true/false)
         let correct;
         if (i % 2 === 0)
-          correct = request === true;
+          correct = request.value === true;
         else 
-          correct = request === false;
+          correct = request.value === false;
         
         // Increment count of requests received correctly or incorrectly
         if (correct)
@@ -301,9 +319,13 @@ ThingsController.put(
           correctnessStr = correctReq + " requests received by gateway with correct values, " + incorrectReq + " with incorrect values."
 
         let notification = cassie.notifications.shift();
-        if (notification !== undefined && request !== notification) 
+        if (notification !== undefined && request.value !== notification.value) 
           wrong ++;
-        str = str + "Request number: " + i + " | " + request + " | " + notification + "\n";
+        
+        if(notification !== undefined)
+          str = str + "Request number: " + i + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms\n";
+        else
+          str = str + "Request number: " + i + " | " + request.value + " | " + "lost" + "\n";
       }
 
       // calculate number of overlapping time intervals
@@ -316,7 +338,13 @@ ThingsController.put(
           if (cassie.intervals[j].finish > cassie.intervals[i].finish)
             overlapping ++;
 
-      response.status(400).send(correctnessStr + "\nNumber of Updates to Web Browser: " + cassie.count + "\nUpdates to Web Browser with incorrect value: " + wrong + "\nPropertyChanged Notifications sent by adapter: " + cassie.sentByAdapter + "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
+      response.status(400).send(
+        correctnessStr + 
+        "\nNumber of Updates to Web Browser: " + cassie.count + 
+        "\nUpdates to Web Browser with incorrect value: " + wrong + 
+        "\nAverage time between Cassandra writes: " + avgWrite + " ms"+
+        "\nAverage time between web app updates: " + avgUpdate + " ms"+ 
+        "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
@@ -327,13 +355,16 @@ ThingsController.put(
       cassie.requests = [];
       cassie.notifications = [];
       cassie.intervals = [];
-      cassie.sentByAdapter = 0;
       response.status(200).send("gateway ready to go");
       return
     }
 
     const value = request.body[propertyName];
-    cassie.requests.push(value);
+
+    let obj = {};
+    obj.value = value;
+    obj.time = Date.now();
+    cassie.requests.push(obj);
 
     try {
       const updatedValue = await Things.setThingProperty(thingId, propertyName,
@@ -493,7 +524,10 @@ function websocketHandler(websocket, request) {
     cassie.count++;
     let value = await property.getValue();
 
-    cassie.notifications.push(value);
+    let obj = {};
+    obj.value = value;
+    obj.time = Date.now();
+    cassie.notifications.push(obj);
     sendMessage({
       id: property.device.id,
       messageType: Constants.PROPERTY_STATUS,

@@ -30,7 +30,6 @@ class Cassie {
 
     this.pending = {}; // keepts track of pending delayed executions
     this.finished = []; // keeps track of delayed executions that have already finished
-    this.sentByAdapter = 0;
 
     this.client = new cassandra.Client({ 
       contactPoints: ['45.56.103.71', '172.104.25.116', '50.116.63.121', '172.104.9.37', '23.239.10.53'],
@@ -123,10 +122,12 @@ class Cassie {
 
 
   // USED FOR BENCHMARK TESTING
+  /*
   write(deviceId, propertyName, value) {
     return new Promise((resolve, reject) => {
       // remove dashes and convert to lowercase
-      deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
+      // deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
+      deviceId = "smartSwitch";
       propertyName = this.inQuotes(propertyName.toLowerCase());
 
       // Execute UPDATE query    
@@ -142,12 +143,15 @@ class Cassie {
       })
     })
   }
+  */
 
   // Write a property value to Cassandra
-  write_withDelay(deviceId, propertyName, value) {
+  // Modified so that multiple gateways write to same Cassandra server
+  write(deviceId, propertyName, value) {
     return new Promise((resolve, reject) => {
       // remove dashes and convert to lowercase
-      deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
+      // deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
+      deviceId = 'smart_switch';
       propertyName = this.inQuotes(propertyName.toLowerCase());
 
       // Execute UPDATE query    
@@ -195,10 +199,12 @@ class Cassie {
   }
 
   // Read a property value from Cassandra
+  // Modifed for multiple gateways to use same Cassandra server
   async read(deviceId, propertyName) {
 
     // remove dashes andconvert lowercase
-    deviceId = this.formatId(deviceId.toLowerCase());
+    // deviceId = this.formatId(deviceId.toLowerCase());
+    deviceId = 'smart_switch';
     propertyName = propertyName.toLowerCase();
 
     // execute select query
