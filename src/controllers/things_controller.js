@@ -344,7 +344,12 @@ ThingsController.put(
         "\nUpdates to Web Browser with incorrect value: " + wrong + 
         "\nAverage time between Cassandra writes: " + avgWrite + " ms"+
         "\nAverage time between web app updates: " + avgUpdate + " ms"+ 
-        "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
+        "\nNumber of overlapping updates to Cassandra: " + overlapping + 
+        "\nNumber of Local Detection Inconsistencies: " + cassie.localDetectionErrors +
+        "\nNumber of Global Detection Overlapping Writes: " + cassie.globalDetectionErrors +
+        "\nNumber of Global Detection Not Persisted Errors: " + cassie.notPersistedErrors +
+        "\nNumber of Requests Delayed: " + cassie.delayedRequests +
+        "\n\n" + str);
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
