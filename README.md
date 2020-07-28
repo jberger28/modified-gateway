@@ -18,16 +18,16 @@ $ git clone -b multiple-gateways https://github.com/jberger28/modified-gateway
 $ cd modified-gateway
 ```
 
-### Install Dependencies
-```
-$ npm ci
-```
-
 ### If you have not yet installed node
 ```
 $ nvm install
 $ nvm use
 $ nvm alias default $(node -v)
+```
+
+### Install Dependencies
+```
+$ npm ci
 ```
 
 ### Add Firewall exceptions (Fedora Linux Only)
