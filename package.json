@@ -58,6 +58,7 @@
     "ip-regex": "^4.1.0",
     "jsonwebtoken": "^8.5.1",
     "mkdirp": "^1.0.4",
+    "modified-cassandra-driver": "git+https://github.com/jberger28/modified-nodejsdriver.git",
     "ncp": "^2.0.0",
     "nocache": "^2.1.0",
     "node-fetch": "^2.6.0",
