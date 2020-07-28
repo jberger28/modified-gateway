@@ -115,8 +115,9 @@ class PropertyProxy extends Property {
   }
 
   // Write property value to Cassandra database
+  // modified to be used with multiple gateways
   async setCachedValue(value) {
-    await cassie.write(this.device.id, this.name, value);
+      await cassie.write(this.device.id, this.name, value);
   }
   
 // Read property value from Cassandra database
