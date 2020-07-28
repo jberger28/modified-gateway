@@ -1,5 +1,4 @@
-# Mozilla WebThings Gateway
-## With Modifications by Jared Berger, Karol Regula, and Kelly Shaw
+# Mozilla WebThings Gateway with Modifications by Jared Berger, Karol Regula, and Kelly Shaw
 
 Web of Things gateway connected to a distibuted, NoSQL Cassandra database.
 
