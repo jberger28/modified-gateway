@@ -7,8 +7,8 @@
 'use strict';
 
 const Deferred = require('./deferred');
-// const cassandra = require('modified-cassandra-driver');
-const cassandra = require('cassandra-driver');
+const cassandra = require('modified-cassandra-driver');
+// const cassandra = require('cassandra-driver');
 
 /**
  * @class Cassie
