@@ -122,7 +122,6 @@ class Cassie {
 
 
   // USED FOR BENCHMARK TESTING
-  /*
   write(deviceId, propertyName, value) {
     return new Promise((resolve, reject) => {
       // remove dashes and convert to lowercase
@@ -143,15 +142,12 @@ class Cassie {
       })
     })
   }
-  */
 
   // Write a property value to Cassandra
-  // Modified so that multiple gateways write to same Cassandra server
-  write(deviceId, propertyName, value) {
+  write_1(deviceId, propertyName, value) {
     return new Promise((resolve, reject) => {
       // remove dashes and convert to lowercase
-      // deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
-      deviceId = 'smart_switch';
+      deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
       propertyName = this.inQuotes(propertyName.toLowerCase());
 
       // Execute UPDATE query    
@@ -199,12 +195,10 @@ class Cassie {
   }
 
   // Read a property value from Cassandra
-  // Modifed for multiple gateways to use same Cassandra server
   async read(deviceId, propertyName) {
 
     // remove dashes andconvert lowercase
-    // deviceId = this.formatId(deviceId.toLowerCase());
-    deviceId = 'smart_switch';
+    deviceId = this.formatId(deviceId.toLowerCase());
     propertyName = propertyName.toLowerCase();
 
     // execute select query
