@@ -750,7 +750,6 @@ class Thing {
    * @param {Object} data Property data
    */
   onPropertyStatus(data) {
-    console.log('propertyStatus message received');
     for (const prop in data) {
       if (!this.displayedProperties.hasOwnProperty(prop)) {
         continue;
