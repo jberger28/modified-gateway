@@ -1,40 +1,53 @@
-n# WebThings Gateway by Mozilla
+# Mozilla WebThings Gateway with Modifications by Jared Berger, Karol Regula, and Kelly Shaw
 
-[![Build Status](https://github.com/mozilla-iot/gateway/workflows/Build/badge.svg)](https://github.com/mozilla-iot/gateway/actions?query=workflow%3ABuild)
-[![codecov](https://codecov.io/gh/mozilla-iot/gateway/branch/master/graph/badge.svg)](https://codecov.io/gh/mozilla-iot/gateway)
-[![dependencies](https://david-dm.org/mozilla-iot/gateway.svg)](https://david-dm.org/mozilla-iot/gateway)
-[![devDependencies](https://david-dm.org/mozilla-iot/gateway/dev-status.svg)](https://david-dm.org/mozilla-iot/gateway?type=dev)
-[![license](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
+Web of Things gateway connected to a distibuted, NoSQL Cassandra database.
 
-Web of Things gateway.
+See prerequisites for building below. Then, run the following: 
+### Install One Gateway Version
+```
+$ git clone -b multiple-gateways https://github.com/jberger28/modified-gateway
+```
 
-## Installation
+### Install Multiple Gateway Version
+```
+$ git clone -b multiple-gateways https://github.com/jberger28/modified-gateway
+```
 
-* If you have a Rasberry Pi, the easiest way to use the gateway is to [download and flash](http://iot.mozilla.org/gateway/) a pre-built software image from Mozilla to an SD card.
-* If you prefer to use Docker, we have a prebuilt Docker image available [here](https://hub.docker.com/r/mozillaiot/gateway), for both ARM and amd64. You can also build your own image from [this repository](https://github.com/mozilla-iot/gateway-docker).
-* On Fedora, Debian, Raspbian, or Ubuntu, you can install the relevant .rpm or .deb package from the [releases page](https://github.com/mozilla-iot/gateway/releases). Those packages are built from the [gateway-rpm](https://github.com/mozilla-iot/gateway-rpm) and [gateway-deb](https://github.com/mozilla-iot/gateway-deb) repos.
-* On Arch Linux, you can install the [webthings-gateway AUR package](https://aur.archlinux.org/packages/webthings-gateway/). The PKGBUILD for this package can also be seen [here](https://github.com/mozilla-iot/gateway-aur).
-* Otherwise, you can build it from source yourself (see below).
+### Navigate to Gateway Directory
+```
+$ cd modified-gateway
+```
 
-## Documentation
+### Install Dependencies
+```
+$ npm ci
+```
 
-* [Getting Started Guide](https://iot.mozilla.org/docs/gateway-getting-started-guide.html)
-* [User Guide](https://iot.mozilla.org/docs/gateway-user-guide.html)
-* [Wiki](https://github.com/mozilla-iot/wiki/wiki)
-* [Various other docs](https://iot.mozilla.org/docs/)
+### If you have not yet installed node
+```
+$ nvm install
+$ nvm use
+$ nvm alias default $(node -v)
+```
 
-## Community
+### Add Firewall exceptions (Fedora Linux Only)
 
-* [Discourse](https://discourse.mozilla.org/c/iot)
-* [Matrix](https://matrix.to/#/#iot:mozilla.org) (`#iot:mozilla.org`)
 
-## Prerequisites for Building
+    $ sudo firewall-cmd --zone=public --add-port=4443/tcp --permanent
+    $ sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
+    $ sudo firewall-cmd --zone=public --add-port=5353/udp --permanent
 
-### Install OS
 
-(If you're just installing on your PC, you can skip this step).
+### Start Gateway
+```
+npm start
+```
 
-If you're installing on a Raspberry Pi then you may need to set up the OS on the Raspberry Pi first. [See here](https://github.com/mozilla-iot/wiki/wiki/Setting-up-Raspberry-Pi) for instructions.
+### If Setting Up for the First Time
+After starting the gateway:
+Load `http://localhost:8080` in web browser, and follow instructions to set up domain name and register.
+
+## Prerequisites for Building (taken from original repository here: https://github.com/mozilla-iot/gateway)
 
 ### Update Package Cache (Linux only)
 
@@ -89,35 +102,6 @@ Reinitialize your terminal session.
 
 ```
 $ . ~/.bashrc
-```
-
-### Install node (if you didn't use nvm)
-
-(If you already installed node via nvm you can skip this step)
-
-Follow the directions from [NodeJS](https://nodejs.org) to install on your platform.
-
-### Set up Bluetooth permissions (Linux only)
-
-The following is required in order to let node and python3 use the Bluetooth adapter.
-
-```
-$ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
-$ sudo setcap cap_net_raw+eip $(eval readlink -f `which python3`)
-```
-
-### Install Bluetooth and BT Low Energy support libraries (Linux only)
-
-The following are required in order to install the Python modules that support Bluetooth
-
-Under Ubuntu/Debian Linux:
-```
-$ sudo apt install libboost-python-dev libboost-thread-dev libbluetooth-dev libglib2.0-dev
-```
-
-Under Fedora Linux:
-```
-$ sudo dnf install boost-python2-devel boost-python3-devel boost-devel bluez-libs-devel glib2-devel
 ```
 
 ### Install libusb and libudev (Linux only)
@@ -225,52 +209,6 @@ $ sudo python2 -m pip install six
 $ sudo python3 -m pip install git+https://github.com/mozilla-iot/gateway-addon-python#egg=gateway_addon
 ```
 
-## Download and Build Gateway
-
-* Clone the GitHub repository (or fork it first):
-
-    ```
-    $ git clone https://github.com/mozilla-iot/gateway.git
-    ```
-
-* Change into the gateway directory:
-
-    ```
-    $ cd gateway
-    ```
-
-* If you have chosen to install nvm above, install and use an LTS version of node and then set the default version. The **`.nvmrc`** file will be used by nvm to determine which version of node to install.
-
-    ```
-    $ nvm install
-    $ nvm use
-    $ nvm alias default $(node -v)
-    ```
-
-* Verify that node and npm have been installed:
-
-    ```
-    $ node --version
-    v10.19.0
-    $ npm --version
-    6.14.0
-    ```
-
-    Note: these versions might differ from the LTS version installed locally.
-
-* Install dependencies:
-
-    ```
-    $ npm ci
-    ```
-
-* Add Firewall exceptions (Fedora Linux Only)
-
-    ```
-    $ sudo firewall-cmd --zone=public --add-port=4443/tcp --permanent
-    $ sudo firewall-cmd --zone=public --add-port=8080/tcp --permanent
-    $ sudo firewall-cmd --zone=public --add-port=5353/udp --permanent
-    ```
 
 
 * Set up domain:
@@ -312,37 +250,6 @@ The Gateway only supports the following browsers, due to its use of the [`Fetch 
 * Safari 10.1+
 * Opera 29+
 
-## Debugging
-
-If you are using VS Code, simply use the "launch" target. It will build the gateway in debugger mode.
-
-If you are not using VS Code, run `npm run debug` and it will build the gateway and launch it with `--inspect`.
-
-## Install additional dependencies for Test (Debian)
-
-These steps are required on Debian
-```
-$ sudo apt install firefox openjdk-8-jre
-```
-
-## Running Tests
-To run the linter and all tests:
-```
-$ npm test
-```
-
-To run a single test:
-```
-$ jest src/test/{test-name}.js
-```
-(assumes you have the `jest` command on your `PATH`, otherwise use `./node_modules/jest/bin/jest.js`)
-
-To compare UI with parent branch:
-```
-$ npm run screenshots
-$ npm test
-```
-(if you have the screenshots in the folder `./browser-test-screenshots`, `npm test` should compare UI with screenshots stored)
 
 ## Source Code Structure
 
