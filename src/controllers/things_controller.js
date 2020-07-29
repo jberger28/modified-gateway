@@ -32,10 +32,12 @@ const ThingsController = PromiseRouter();
 ThingsController.ws('/:thingId/', websocketHandler);
 ThingsController.ws('/', websocketHandler);
 
+/*
 cassie.client.on('consistencyError', (msg) => {
   if (! msg.startsWith('finished'))
     console.log("CONSISTENCY ERROR " + msg) 
 });
+*/
 
 /**
  * Get a list of Things.
@@ -285,15 +287,21 @@ ThingsController.put(
       for (let i = 1; i < cassie.notifications.length; i++)
         timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
       
+      // Find avg
       const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
-      avgUpdate = Math.round(findAvg(timeBetween));
+      if (timeBetween.length > 0)
+        avgUpdate = Math.round(findAvg(timeBetween));
+      else 
+        avgUpdate = 0;
 
       // count average time between cassandra writes
       timeBetween = [];
       for (let i = 1; i < cassie.intervals.length; i++)
         timeBetween.push(cassie.intervals[i].start - cassie.intervals[i-1].start);
       
-      avgWrite = Math.round(findAvg(timeBetween));
+      if(timeBetween.length > 0)
+        avgWrite = Math.round(findAvg(timeBetween));
+      else avgWrite = 0;
       
 
       let length = cassie.requests.length;
@@ -344,7 +352,12 @@ ThingsController.put(
         "\nUpdates to Web Browser with incorrect value: " + wrong + 
         "\nAverage time between Cassandra writes: " + avgWrite + " ms"+
         "\nAverage time between web app updates: " + avgUpdate + " ms"+ 
-        "\nNumber of overlapping updates to Cassandra: " + overlapping + "\n\n" + str);
+        "\nNumber of overlapping updates to Cassandra: " + overlapping + 
+        "\nNumber of Local Detection Inconsistencies: " + cassie.localDetectionErrors +
+        "\nNumber of Global Detection Overlapping Writes: " + cassie.globalDetectionErrors +
+        "\nNumber of Global Detection Not Persisted Errors: " + cassie.notPersistedErrors +
+        "\nNumber of Requests Delayed: " + cassie.delayedRequests +
+        "\n\n" + str);
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];

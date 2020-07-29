@@ -20,7 +20,8 @@ class Cassie {
   constructor() {
     this.typeMap = new Map([
       ["boolean", "boolean"],
-      ["number", "double"]
+      ["number", "double"],
+      ["integer", "int"]
       ]);
 
     this.count = 0; // used to count notifications sent to web app
@@ -128,7 +129,7 @@ class Cassie {
 
     // Execute the INSERT query
     let query = 'INSERT INTO ' + this.inQuotes(deviceId) + '' + props + ' VALUES ' + values + ';';
-    this.execute(query);
+    await this.execute(query);
   }
 
 
@@ -161,15 +162,19 @@ class Cassie {
   write(deviceId, propertyName, value) {
     return new Promise((resolve, reject) => {
       // remove dashes and convert to lowercase
-      // deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
-      deviceId = 'smart_switch';
+      deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
       propertyName = this.inQuotes(propertyName.toLowerCase());
 
       // Execute UPDATE query    
       let query = 'UPDATE ' + deviceId + ' SET ' + propertyName + '=' + value + ' WHERE id=\'state\';';
 
+      const interval = {};
+      interval.start = Date.now();
+
       this.execute(query)
       .then((result) => {
+        interval.finish = Date.now();
+        this.intervals.push(interval);
         if (result.info.warnings && result.info.warnings[0] == "DELAY")
         {
           console.log("REQUEST DELAYED WITH TIMESTAMP: " + result.info.warnings[1]);
@@ -215,8 +220,7 @@ class Cassie {
   async read(deviceId, propertyName) {
 
     // remove dashes andconvert lowercase
-    // deviceId = this.formatId(deviceId.toLowerCase());
-    deviceId = 'smart_switch';
+    deviceId = this.formatId(deviceId.toLowerCase());
     propertyName = propertyName.toLowerCase();
 
     // execute select query
