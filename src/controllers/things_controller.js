@@ -287,6 +287,7 @@ ThingsController.put(
       for (let i = 1; i < cassie.notifications.length; i++)
         timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
       
+      // Find avg
       const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
       if (timeBetween.length > 0)
         avgUpdate = Math.round(findAvg(timeBetween));
