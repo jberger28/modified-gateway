@@ -281,11 +281,42 @@ ThingsController.put(
       let incorrectReq = 0; // count incorrect requests received by gateway
       let avgUpdate;
       let avgWrite;
+      let avgProcessingTime = 0;
 
-      // count average time between consecutive browser updates
+      let swaps = 0; // count number of times the gateway switches the sequence of its web app notifications (ex: sends a false instead of a true)
+      let trueFalseOrder = true;
+      const correct = ((seq, value) => {
+        if(seq % 2 === 0)
+          return value === true;
+        else
+          return value === false;
+      })
+
+
+      // count average time between consecutive browser updates and count times order of notifcations got changed (from tftf to ftft)
       let timeBetween = [];
-      for (let i = 1; i < cassie.notifications.length; i++)
-        timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
+      let processingTime = [];
+      for (let i = 0; i < cassie.notifications.length; i++) {
+        if (i > 0)
+          timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
+
+        // add notification time minus request arrival time to an array
+        processingTime.push(cassie.notifications[i].time - cassie.requests[i].time);
+
+        // determine number of times expected true-false order was interrupted
+        if (trueFalseOrder) {
+          if (! correct(i, cassie.notifications[i].value)) {
+            swaps++;
+            trueFalseOrder = false;
+          }
+        }
+        else {
+          if (correct(i, cassie.notifications[i].value)) {
+            swaps ++;
+            trueFalseOrder = true;
+          }
+        }
+      }
       
       // Find avg
       const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
@@ -293,6 +324,11 @@ ThingsController.put(
         avgUpdate = Math.round(findAvg(timeBetween));
       else 
         avgUpdate = 0;
+      
+      if(processingTime.length > 0)
+        avgProcessingTime = Math.round(findAvg(processingTime));
+      else
+        avgProcessingTime = 0;
 
       // count average time between cassandra writes
       timeBetween = [];
@@ -321,11 +357,6 @@ ThingsController.put(
         else
           incorrectReq++
 
-        if(incorrectReq === 0)
-          correctnessStr = correctReq + " requests received by gateway, all with correct values."
-        else
-          correctnessStr = correctReq + " requests received by gateway with correct values, " + incorrectReq + " with incorrect values."
-
         let notification = cassie.notifications.shift();
         if (notification !== undefined && request.value !== notification.value) 
           wrong ++;
@@ -336,31 +367,48 @@ ThingsController.put(
           str = str + "Request number: " + i + " | " + request.value + " | " + "lost" + "\n";
       }
 
+      if(incorrectReq === 0)
+        correctnessStr = correctReq + " requests received by gateway, all with correct values."
+      else {
+        correctnessStr = correctReq + " requests received by gateway with correct values, " + incorrectReq + " with incorrect values."
+      }
+
+      // calculate average Cassandra response time to update query
+      let cassAvg = 0; // average Cassandra response time to update query
+      for (let i = 0; i < cassie.intervals.length; i++)
+        cassAvg += cassie.intervals[i].finish - cassie.intervals[i].start;
+
+      cassAvg = Math.round(cassAvg / cassie.intervals.length);
+
       // calculate number of overlapping time intervals
       cassie.intervals.sort((a,b) => a.start - b.start) // sort intervals by start time
       let overlapping = 0;
-
+      
       // count number of overlapping intervals
       for (let i = 0; i < cassie.intervals.length; i++)
         for (let j = 0; j < i; j++)
-          if (cassie.intervals[j].finish > cassie.intervals[i].finish)
+          if (cassie.intervals[j].finish > cassie.intervals[i].finish) {
             overlapping ++;
-
+            break;
+          }
       response.status(400).send(
         correctnessStr + 
         "\nNumber of Updates to Web Browser: " + cassie.count + 
         "\nUpdates to Web Browser with incorrect value: " + wrong + 
+        "\nTimes the expected true false response order was swapped: " + swaps +
         "\nAverage time between Cassandra writes: " + avgWrite + " ms"+
         "\nAverage time between web app updates: " + avgUpdate + " ms"+ 
-        "\nNumber of overlapping updates to Cassandra: " + overlapping + 
+        "\nAverage gateway processing time for request: " + avgProcessingTime + " ms" + 
+        "\nNumber of updates to Cassandra that overlapped with another update: " + overlapping + 
+        "\nAverage cassandra response time to update: " + cassAvg + " ms" + 
         "\nNumber of Local Detection Inconsistencies: " + cassie.localDetectionErrors +
         "\nNumber of Global Detection Overlapping Writes: " + cassie.globalDetectionErrors +
         "\nNumber of Global Detection Not Persisted Errors: " + cassie.notPersistedErrors +
         "\nNumber of Requests Delayed: " + cassie.delayedRequests +
         "\n\n" + str);
-      cassie.count = 0;
-      cassie.requests = [];
-      cassie.notifications = [];
+      
+      // make sure property is set to off before next test
+      const updatedValue = await Things.setThingProperty(thingId, propertyName,false);
       return
     }
     else if (seq === -2) {
@@ -372,7 +420,11 @@ ThingsController.put(
       cassie.localDetectionErrors = 0;
       cassie.globalDetectionErrors = 0;
       cassie.notPersistedErrors = 0;
-      response.status(200).send("gateway ready to go");
+
+      // if (updatedValue === false)
+        response.status(200).send("gateway ready to go");
+      //else
+       // response.status(400).send("issue setting device back to off");
       return
     }
 
