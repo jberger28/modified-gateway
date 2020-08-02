@@ -282,7 +282,10 @@ ThingsController.put(
       let avgUpdate;
       let avgWrite;
       let avgProcessingTime = 0;
+      let dbReadWrongValue = 0; // count number of reads that go awry
 
+
+      /* UNCOMMENT FOR TESTING 'ON' PROPERTY
       let swaps = 0; // count number of times the gateway switches the sequence of its web app notifications (ex: sends a false instead of a true)
       let trueFalseOrder = true;
       const correct = ((seq, value) => {
@@ -291,7 +294,7 @@ ThingsController.put(
         else
           return value === false;
       })
-
+      */
 
       // count average time between consecutive browser updates and count times order of notifcations got changed (from tftf to ftft)
       let timeBetween = [];
@@ -303,6 +306,7 @@ ThingsController.put(
         // add notification time minus request arrival time to an array
         processingTime.push(cassie.notifications[i].time - cassie.requests[i].time);
 
+        /* UNCOMMENT FOR TESTING ON PROPERTY
         // determine number of times expected true-false order was interrupted
         if (trueFalseOrder) {
           if (! correct(i, cassie.notifications[i].value)) {
@@ -316,6 +320,7 @@ ThingsController.put(
             trueFalseOrder = true;
           }
         }
+        */
       }
       
       // Find avg
@@ -340,31 +345,103 @@ ThingsController.put(
       else avgWrite = 0;
       
 
+      /*
+      // pre-process array of notifications to find missing values, if necessary
+      if (cassie.notifications.length < cassie.requests.length) {
+        let i = 1;
+
+        // check if first request has been dropped before main loop
+        let firstResponse = cassie.notifications[0].value;
+        if (firstResponse > 0) {
+          
+          for (let j = 0; j < firstResponse; j++)
+            cassie.notifications.splice(cassie.notifications[0 + j], 0, "lost");
+          
+          i += firstResponse
+        }
+
+        // insert "lost" into all locations where we lost a response
+        for (i; i < cassie.notifications.length; i++) {
+          const diff = cassie.notifications[i].value - cassie.notifications[i-1].value;
+          let second = cassie.notifications[i].value;
+          let first = cassie.notifications[i-1].value;
+
+          // if we're missing a response value, ex: we got the sequence 1, 2, 4, 5, 6
+          if (diff > 1) {
+            for (let j = 0; j < diff; j++) {
+              cassie.notifications.splice(cassie.notifications[i-j], 0, "lost");
+              i++;
+            }
+          }
+        }
+      }
+      */
+
       let length = cassie.requests.length;
-      for (let i = 0; i < length; i++) {
-        let request = cassie.requests.shift();
+      // for (let i = 0; i < length; i++) {
+        let reqPointer = 0;
+        let notifPointer = 0;
+
+        while (reqPointer < length) {
+        // let request = cassie.requests.shift();
+        let request = cassie.requests[reqPointer];
         
         // Determine if requests were received by gateway in correct order (should be alternating true/false)
         let correct;
+        /*
         if (i % 2 === 0)
           correct = request.value === true;
         else 
           correct = request.value === false;
+        */
+       correct = reqPointer % 50 === request.value;
         
-        // Increment count of requests received correctly or incorrectly
+        
+       // Increment count of requests received correctly or incorrectly
         if (correct)
           correctReq++;
         else
           incorrectReq++
 
-        let notification = cassie.notifications.shift();
+        // let notification = cassie.notifications.shift();
+        let notification = cassie.notifications[notifPointer];
+        
+        let flagged = false;
+        if (notification !== undefined && request.value !== notification.value) {
+
+          //check db write
+          if(notification.value !== cassie.dbWrites[notifPointer]) {
+            dbReadWrongValue++;
+            str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms WRONG VALUE FROM DATABASE\n";
+            flagged = true;
+          }
+          else {
+            // check timestamp heuristic (if processing time is greater than time between requests)
+            if (reqPointer > 0) {
+              let procTime = notification.time - request.time;
+              let betweenRequests = request.time - cassie.requests[reqPointer - 1].time;
+              if (procTime > betweenRequests) {
+                str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms FLAGGED AS LOST\n";
+                flagged = true;
+                reqPointer++;
+                wrong++;
+                continue;
+              }
+            }
+          }
+        }
+
         if (notification !== undefined && request.value !== notification.value) 
           wrong ++;
         
+        if (!flagged) {
         if(notification !== undefined)
-          str = str + "Request number: " + i + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms\n";
+          str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms\n";
         else
-          str = str + "Request number: " + i + " | " + request.value + " | " + "lost" + "\n";
+          str = str + "Request number: " + reqPointer + " | " + request.value + " | " + "lost" + "\n";
+        }
+        reqPointer++;
+        notifPointer++;
       }
 
       if(incorrectReq === 0)
@@ -395,7 +472,8 @@ ThingsController.put(
         correctnessStr + 
         "\nNumber of Updates to Web Browser: " + cassie.count + 
         "\nUpdates to Web Browser with incorrect value: " + wrong + 
-        "\nTimes the expected true false response order was swapped: " + swaps +
+        // "\nTimes the expected true false response order was swapped: " + swaps +
+        "\nReads of wrong value from database: " + dbReadWrongValue +
         "\nAverage time between Cassandra writes: " + avgWrite + " ms"+
         "\nAverage time between web app updates: " + avgUpdate + " ms"+ 
         "\nAverage gateway processing time for request: " + avgProcessingTime + " ms" + 
@@ -406,9 +484,12 @@ ThingsController.put(
         "\nNumber of Global Detection Not Persisted Errors: " + cassie.notPersistedErrors +
         "\nNumber of Requests Delayed: " + cassie.delayedRequests +
         "\n\n" + str);
-      
+       
       // make sure property is set to off before next test
-      const updatedValue = await Things.setThingProperty(thingId, propertyName,false);
+      if (propertyName === 'on')
+        await Things.setThingProperty(thingId, propertyName,false);
+      else if (propertyName === 'level')
+        await Things.setThingProperty(thingId, propertyName,0);
       return
     }
     else if (seq === -2) {
@@ -420,6 +501,7 @@ ThingsController.put(
       cassie.localDetectionErrors = 0;
       cassie.globalDetectionErrors = 0;
       cassie.notPersistedErrors = 0;
+      cassie.dbWrites = [];
 
       // if (updatedValue === false)
         response.status(200).send("gateway ready to go");

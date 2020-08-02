@@ -36,6 +36,7 @@ class Cassie {
     this.globalDetectionErrors = 0;
     this.notPersistedErrors = 0;
     this.delayedRequests = 0;
+    this.dbWrites = [];
  
 
     this.client = new cassandra.Client({ 
@@ -168,6 +169,7 @@ class Cassie {
       // Execute UPDATE query    
       let query = 'UPDATE ' + deviceId + ' SET ' + propertyName + '=' + value + ' WHERE id=\'state\';';
 
+      this.dbWrites.push(value);
       const interval = {};
       interval.start = Date.now();
 
