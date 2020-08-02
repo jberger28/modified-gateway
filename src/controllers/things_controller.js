@@ -281,59 +281,27 @@ ThingsController.put(
       let incorrectReq = 0; // count incorrect requests received by gateway
       let avgUpdate;
       let avgWrite;
-      let avgProcessingTime = 0;
       let dbReadWrongValue = 0; // count number of reads that go awry
+      let avgProcessingTime;
 
-
-      /* UNCOMMENT FOR TESTING 'ON' PROPERTY
-      let swaps = 0; // count number of times the gateway switches the sequence of its web app notifications (ex: sends a false instead of a true)
-      let trueFalseOrder = true;
-      const correct = ((seq, value) => {
-        if(seq % 2 === 0)
-          return value === true;
-        else
-          return value === false;
-      })
-      */
-
-      // count average time between consecutive browser updates and count times order of notifcations got changed (from tftf to ftft)
-      let timeBetween = [];
-      let processingTime = [];
+      // count average time between consecutive browser updates
+      let timeBetween = []; // time between browser updates
       for (let i = 0; i < cassie.notifications.length; i++) {
         if (i > 0)
           timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
 
         // add notification time minus request arrival time to an array
-        processingTime.push(cassie.notifications[i].time - cassie.requests[i].time);
-
-        /* UNCOMMENT FOR TESTING ON PROPERTY
-        // determine number of times expected true-false order was interrupted
-        if (trueFalseOrder) {
-          if (! correct(i, cassie.notifications[i].value)) {
-            swaps++;
-            trueFalseOrder = false;
-          }
-        }
-        else {
-          if (correct(i, cassie.notifications[i].value)) {
-            swaps ++;
-            trueFalseOrder = true;
-          }
-        }
-        */
+        // processingTime.push(cassie.notifications[i].time - cassie.requests[i].time);
       }
       
-      // Find avg
+      // Find avg function
       const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
+      
+      // avg time between consecutive browser updates
       if (timeBetween.length > 0)
         avgUpdate = Math.round(findAvg(timeBetween));
       else 
         avgUpdate = 0;
-      
-      if(processingTime.length > 0)
-        avgProcessingTime = Math.round(findAvg(processingTime));
-      else
-        avgProcessingTime = 0;
 
       // count average time between cassandra writes
       timeBetween = [];
@@ -343,112 +311,96 @@ ThingsController.put(
       if(timeBetween.length > 0)
         avgWrite = Math.round(findAvg(timeBetween));
       else avgWrite = 0;
-      
 
-      /*
-      // pre-process array of notifications to find missing values, if necessary
-      if (cassie.notifications.length < cassie.requests.length) {
-        let i = 1;
+      // pre-process array of database writes to identify lost updates, assumes we are sending 100 unique updates to brigthness of 0-99
+      let sortedWrites = cassie.dbWrites.slice().sort((a,b) => a-b);
+      let lostUpdates = [];
+      if (sortedWrites[0] !== 0) 
+        lostUpdates.push(0);
 
-        // check if first request has been dropped before main loop
-        let firstResponse = cassie.notifications[0].value;
-        if (firstResponse > 0) {
-          
-          for (let j = 0; j < firstResponse; j++)
-            cassie.notifications.splice(cassie.notifications[0 + j], 0, "lost");
-          
-          i += firstResponse
-        }
+      for (let i = 1; i < sortedWrites.length; i++) {
+        let current = sortedWrites[i];
+        let prev = sortedWrites[i - 1];
 
-        // insert "lost" into all locations where we lost a response
-        for (i; i < cassie.notifications.length; i++) {
-          const diff = cassie.notifications[i].value - cassie.notifications[i-1].value;
-          let second = cassie.notifications[i].value;
-          let first = cassie.notifications[i-1].value;
-
-          // if we're missing a response value, ex: we got the sequence 1, 2, 4, 5, 6
-          if (diff > 1) {
-            for (let j = 0; j < diff; j++) {
-              cassie.notifications.splice(cassie.notifications[i-j], 0, "lost");
-              i++;
-            }
+        if (current - prev > 1) {
+          for (let j = prev + 1; j < current; j++) {
+            lostUpdates.push(j);
           }
         }
       }
-      */
 
+      let processingTime = []; // times it took gateway to process each request (browser notification timestamp - arrival at gateway timestamp)
       let length = cassie.requests.length;
-      // for (let i = 0; i < length; i++) {
-        let reqPointer = 0;
-        let notifPointer = 0;
+      let reqPointer = 0; // used to step through requests
+      let notifPointer = 0; // used to step through notifications
 
         while (reqPointer < length) {
-        // let request = cassie.requests.shift();
-        let request = cassie.requests[reqPointer];
+          let request = cassie.requests[reqPointer];
         
-        // Determine if requests were received by gateway in correct order (should be alternating true/false)
-        let correct;
-        /*
-        if (i % 2 === 0)
-          correct = request.value === true;
-        else 
-          correct = request.value === false;
-        */
-       correct = reqPointer % 50 === request.value;
-        
-        
-       // Increment count of requests received correctly or incorrectly
-        if (correct)
-          correctReq++;
-        else
-          incorrectReq++
+          // Determine if requests were received by gateway in correct order (should be number 0-99)
+          let correct = reqPointer === request.value;
+              
+          // Increment count of requests received correctly or incorrectly
+          if (correct)
+            correctReq++;
+          else
+            incorrectReq++
 
-        // let notification = cassie.notifications.shift();
-        let notification = cassie.notifications[notifPointer];
+          let notification;
+          if (notifPointer < cassie.notifications.length) {
+            notification = cassie.notifications[notifPointer];
+          }
         
-        let flagged = false;
-        if (notification !== undefined && request.value !== notification.value) {
+          // if update was entirely lost (not attempted to be written to database)
+          if(lostUpdates.includes(request.value)) {
+            str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms FLAGGED AS LOST\n";
+            reqPointer++; // increment just the request number but not the notification
+          } 
+          else {
+            if(notification !== undefined)
+              processingTime.push(notification.time - request.time); // append processing time to array
+        
+          // if update was not lost, but request and notification values still don't match
+          if (notification !== undefined && request.value !== notification.value) {
 
-          //check db write
-          if(notification.value !== cassie.dbWrites[notifPointer]) {
-            dbReadWrongValue++;
-            str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms WRONG VALUE FROM DATABASE\n";
-            flagged = true;
+            // if the correct request was sent to Cassandra but we got a bad value from the ensuing read
+            if (request.value === cassie.dbWrites[notifPointer]) {
+              str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms WRONG VALUE FROM DATABASE\n";
+              dbReadWrongValue++;
+              wrong++
+            }
+            // if the gateway sent updates to cassandra out of order, a gateway side error
+            else {
+              str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms REORDERED BY GATEWAY\n";
+              wrong++;
+            }
+          
+            reqPointer++;
+            notifPointer++;
           }
           else {
-            // check timestamp heuristic (if processing time is greater than time between requests)
-            if (reqPointer > 0) {
-              let procTime = notification.time - request.time;
-              let betweenRequests = request.time - cassie.requests[reqPointer - 1].time;
-              if (procTime > betweenRequests) {
-                str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms FLAGGED AS LOST\n";
-                flagged = true;
-                reqPointer++;
-                wrong++;
-                continue;
-              }
-            }
+            if(notification !== undefined)
+              str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms\n";
+            else
+              str = str + "Request number: " + reqPointer + " | " + request.value + " | " + "lost" + "\n";
+
+            reqPointer++;
+            notifPointer++;
           }
         }
-
-        if (notification !== undefined && request.value !== notification.value) 
-          wrong ++;
-        
-        if (!flagged) {
-        if(notification !== undefined)
-          str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms\n";
-        else
-          str = str + "Request number: " + reqPointer + " | " + request.value + " | " + "lost" + "\n";
-        }
-        reqPointer++;
-        notifPointer++;
       }
 
       if(incorrectReq === 0)
         correctnessStr = correctReq + " requests received by gateway, all with correct values."
-      else {
+      else 
         correctnessStr = correctReq + " requests received by gateway with correct values, " + incorrectReq + " with incorrect values."
-      }
+
+      
+      // calculate average processing time for request by gateway
+      if (processingTime.length > 0)
+        avgProcessingTime = Math.round(findAvg(processingTime));
+      else
+        avgProcessingTime = 0;
 
       // calculate average Cassandra response time to update query
       let cassAvg = 0; // average Cassandra response time to update query
