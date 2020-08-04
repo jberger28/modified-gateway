@@ -8,7 +8,6 @@
 
 const Deferred = require('./deferred');
 const cassandra = require('modified-cassandra-driver');
-// const cassandra = require('cassandra-driver');
 
 /**
  * @class Cassie
@@ -32,11 +31,11 @@ class Cassie {
     this.pending = {}; // keepts track of pending delayed executions
     this.finished = []; // keeps track of delayed executions that have already finished
 
-    this.localDetectionErrors = 0;
-    this.globalDetectionErrors = 0;
-    this.notPersistedErrors = 0;
-    this.delayedRequests = 0;
-    this.dbWrites = [];
+    this.localDetectionErrors = 0; // count local detection errors
+    this.globalDetectionErrors = 0; // count global detection overlapping writes errors
+    this.notPersistedErrors = 0; // count global detection update not persisted errors
+    this.delayedRequests = 0; // count number of requests delayed
+    this.dbWrites = []; // store writes to database
  
 
     this.client = new cassandra.Client({ 
@@ -45,8 +44,9 @@ class Cassie {
       keyspace: 'iot'
     });
 
-    this.connect();
+    this.connect(); // connect to Cassandra server
 
+    // Set up event listener for consistency error from server (detected by Will's work)
     this.client.on('consistencyError', (msg) => {
       if (msg.startsWith('Local Detection'))
         this.localDetectionErrors++;
@@ -55,9 +55,9 @@ class Cassie {
       else if (msg.startsWith('Global detection update not persisted'))
         this.notPersistedErrors++;
     })
+
     // Set up event listener for notification that delayed request has finished executing
     this.client.on('finishedProcessing', (msg) => {
-      // console.log("DELAYED HAS FINISHED EXECUTING!! " + msg);
       let ts = msg.slice(msg.indexOf(' ') + 1); // the timestamp sent by the server
 
       // if we know request is pending, resolve corresponding promise
@@ -72,6 +72,7 @@ class Cassie {
     })
   }
 
+  // Connect to Cassandra cluster and store Host object representing node 1
   async connect() {
     try {
       await this.client.connect();
@@ -103,7 +104,6 @@ class Cassie {
     let tableExists;
     try {
       tableExists = (await this.client.metadata.getTable("iot", deviceId)) != null;
-      // console.log("Table exists?: " + deviceId + " = " + tableExists);
     }
     catch(err) {
       console.log(err);
@@ -121,7 +121,6 @@ class Cassie {
       }
 
       query = query.slice(0, query.length - 1) + " );"
-      console.log(query);
       await this.execute(query);
     }
 
@@ -143,33 +142,7 @@ class Cassie {
     await this.execute(query);
   }
 
-
-  // USED FOR BENCHMARK TESTING
-  /*
-  write(deviceId, propertyName, value) {
-    return new Promise((resolve, reject) => {
-      // remove dashes and convert to lowercase
-      // deviceId = this.inQuotes(this.formatId(deviceId.toLowerCase()));
-      deviceId = "smartSwitch";
-      propertyName = this.inQuotes(propertyName.toLowerCase());
-
-      // Execute UPDATE query    
-      let query = 'UPDATE ' + deviceId + ' SET ' + propertyName + '=' + value + ' WHERE id=\'state\';';
-
-      const interval = {};
-      interval.start = Date.now();
-      this.execute(query)
-      .then(() => {
-        interval.finish = Date.now();
-        this.intervals.push(interval);
-        resolve()
-      })
-    })
-  }
-  */
-
   // Write a property value to Cassandra
-  // Modified so that multiple gateways write to same Cassandra server
   write(deviceId, propertyName, value) {
     return new Promise((resolve, reject) => {
       // remove dashes and convert to lowercase
@@ -179,8 +152,9 @@ class Cassie {
       // Execute UPDATE query    
       let query = 'UPDATE ' + deviceId + ' SET ' + propertyName + '=' + value + ' WHERE id=\'state\';';
 
-      this.dbWrites.push(value);
-      const interval = {};
+      // USED FOR TESTING
+      this.dbWrites.push(value); // store all values being written to data
+      const interval = {}; // interval in which update to cassandra is in flight
       interval.start = Date.now();
 
       this.execute(query) // add 'false' as next parameter to only send updates to one node
@@ -224,7 +198,7 @@ class Cassie {
     /**
    * @method pendingExecution
    * @returns a promise which is resoved when a delayed
-   * query finishes execution
+   * query finishes execution, allows us to wait until we know a Cassandra update has finished
    */
   pendingExecution(ts) {
     const deferred = new Deferred();
@@ -233,7 +207,6 @@ class Cassie {
   }
 
   // Read a property value from Cassandra
-  // Modifed for multiple gateways to use same Cassandra server
   async read(deviceId, propertyName) {
 
     // remove dashes andconvert lowercase

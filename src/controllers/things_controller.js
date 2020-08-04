@@ -271,30 +271,30 @@ ThingsController.put(
       return;
     }
 
+    // */
+    // BEGIN USED FOR TESTING
     const seq  = request.body["sequenceNumber"];
 
+    // Calculate values to be used as summary
     if (seq === -1) {
       let wrong = 0; // counts wrong values sent in notifications
       let str = '';
       let correctnessStr = "";
       let correctReq = 0; // counts correct requests received by gateway
       let incorrectReq = 0; // count incorrect requests received by gateway
-      let avgUpdate;
-      let avgWrite;
+      let avgUpdate; // avg time between web app updates
+      let avgWrite; // avg time between writes to cassandra
       let dbReadWrongValue = 0; // count number of reads that go awry
-      let avgProcessingTime;
+      let avgProcessingTime; // average gateway processing time per request
 
       // count average time between consecutive browser updates
       let timeBetween = []; // time between browser updates
       for (let i = 0; i < cassie.notifications.length; i++) {
         if (i > 0)
           timeBetween.push(cassie.notifications[i].time - cassie.notifications[i-1].time);
-
-        // add notification time minus request arrival time to an array
-        // processingTime.push(cassie.notifications[i].time - cassie.requests[i].time);
       }
       
-      // Find avg function
+      // Function to calculate average of numeric values in an array
       const findAvg = (timeBetween) => timeBetween.reduce((a, b) => a + b) / timeBetween.length;
       
       // avg time between consecutive browser updates
@@ -312,7 +312,8 @@ ThingsController.put(
         avgWrite = Math.round(findAvg(timeBetween));
       else avgWrite = 0;
 
-      // pre-process array of database writes to identify lost updates, assumes we are sending 100 unique updates to brigthness of 0-99
+      // pre-process array of database writes to flag updates that were lost entirely, 
+      // assumes we are sending 100 unique updates to brigthness of 0-99
       let sortedWrites = cassie.dbWrites.slice().sort((a,b) => a-b);
       let lostUpdates = [];
       if (sortedWrites[0] !== 0) 
@@ -350,8 +351,11 @@ ThingsController.put(
           if (notifPointer < cassie.notifications.length) {
             notification = cassie.notifications[notifPointer];
           }
-        
-          // if update was entirely lost (not attempted to be written to database)
+          
+          /* 3 cases of errors */
+
+          // CASE 1, update lost entirely
+          // if update was entirely lost (not attempted to be written to database), flag as lost
           if(lostUpdates.includes(request.value)) {
             str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms FLAGGED AS LOST\n";
             reqPointer++; // increment just the request number but not the notification
@@ -363,21 +367,28 @@ ThingsController.put(
           // if update was not lost, but request and notification values still don't match
           if (notification !== undefined && request.value !== notification.value) {
 
-            // if the correct request was sent to Cassandra but we got a bad value from the ensuing read
+            // CASE 2, correct update sent to Cassandra but wrong value read from database,
+            // read likely was performed after another update had already been sent to Cassandra.
             if (request.value === cassie.dbWrites[notifPointer]) {
               str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms WRONG VALUE FROM DATABASE\n";
               dbReadWrongValue++;
               wrong++
             }
+
+            // CASE 3, incorrect/out of order update sent to cassandra
+            // ex: we should have sent level = 6 to Cassandra but we instead sent level = 5 or level = 7
             // if the gateway sent updates to cassandra out of order, a gateway side error
             else {
               str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms REORDERED BY GATEWAY\n";
               wrong++;
             }
           
+            // increment both pointers for next loop iteration
             reqPointer++;
             notifPointer++;
           }
+
+          // update was received from device, state written to and read from cassandra as expected
           else {
             if(notification !== undefined)
               str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms\n";
@@ -417,11 +428,12 @@ ThingsController.put(
             overlapping ++;
             break;
           }
+      
+      // send big string of data to be evaluated testing scripts
       response.status(400).send(
         correctnessStr + 
         "\nNumber of Updates to Web Browser: " + cassie.count + 
         "\nUpdates to Web Browser with incorrect value: " + wrong + 
-        // "\nTimes the expected true false response order was swapped: " + swaps +
         "\nReads of wrong value from database: " + dbReadWrongValue +
         "\nAverage time between Cassandra writes: " + avgWrite + " ms"+
         "\nAverage time between web app updates: " + avgUpdate + " ms"+ 
@@ -442,6 +454,8 @@ ThingsController.put(
       return
     }
     else if (seq === -2) {
+
+      // Reset counters before we begin next test
       cassie.count = 0;
       cassie.requests = [];
       cassie.notifications = [];
@@ -452,12 +466,12 @@ ThingsController.put(
       cassie.notPersistedErrors = 0;
       cassie.dbWrites = [];
 
-      // if (updatedValue === false)
-        response.status(200).send("gateway ready to go");
-      //else
-       // response.status(400).send("issue setting device back to off");
+      response.status(200).send("gateway ready to go");
+
       return
     }
+    // */
+    // END USED FOR TESTING
 
     const value = request.body[propertyName];
 
