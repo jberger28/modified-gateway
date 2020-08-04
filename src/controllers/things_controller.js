@@ -390,10 +390,7 @@ ThingsController.put(
         }
       }
 
-      if(incorrectReq === 0)
-        correctnessStr = correctReq + " requests received by gateway, all with correct values."
-      else 
-        correctnessStr = correctReq + " requests received by gateway with correct values, " + incorrectReq + " with incorrect values."
+      correctnessStr = correctReq + " requests received by gateway with correct value, " + incorrectReq + " with incorrect value."
 
       
       // calculate average processing time for request by gateway

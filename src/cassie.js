@@ -45,10 +45,7 @@ class Cassie {
       keyspace: 'iot'
     });
 
-    this.client.connect(function (err) {
-      if (err) return console.error(err);
-      else console.log('Connected to Cassandra cluster');
-    });
+    this.connect();
 
     this.client.on('consistencyError', (msg) => {
       if (msg.startsWith('Local Detection'))
@@ -73,6 +70,19 @@ class Cassie {
         this.finished.push(ts);
       }
     })
+  }
+
+  async connect() {
+    try {
+      await this.client.connect();
+      console.log('Connected to Cassandra cluster');
+    }
+    catch (err) {
+      console.error(err);
+    }
+
+    // store node 1 Host object, needed to sending requests to single node
+    this.nodeOne = this.client.hosts.get('45.56.103.71:9042');
   }
 
   // Create a table representing the state of a device,
@@ -173,7 +183,7 @@ class Cassie {
       const interval = {};
       interval.start = Date.now();
 
-      this.execute(query)
+      this.execute(query) // add 'false' as next parameter to only send updates to one node
       .then((result) => {
         if (result.info.warnings && result.info.warnings[0] == "DELAY")
         {
@@ -240,10 +250,13 @@ class Cassie {
   }
 
   // Execute query and perform error checking
-  async execute(query) {
+  async execute(query, multiHost = true) {
     try {
-      let result = await this.client.execute(query);
-      // console.log("Query: " + query + "executed successfully");
+      let result;
+      if (multiHost)
+        result = await this.client.execute(query);
+      else
+        result = await this.client.execute(query,[],{host: this.nodeOne});
       return result;
     }
     catch(err) {
