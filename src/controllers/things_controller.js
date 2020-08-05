@@ -357,7 +357,7 @@ ThingsController.put(
           // CASE 1, update lost entirely
           // if update was entirely lost (not attempted to be written to database), flag as lost
           if(lostUpdates.includes(request.value)) {
-            str = str + "Request number: " + reqPointer + " | " + request.value + " | " + notification.value + " | " + (notification.time - request.time)  + " ms FLAGGED AS LOST\n";
+            str = str + "Request number: " + reqPointer + " | " + request.value + " | " + "none" + " | " + (notification.time - request.time)  + " ms FLAGGED AS LOST\n";
             reqPointer++; // increment just the request number but not the notification
           } 
           else {

@@ -47,7 +47,7 @@ class AddonManager extends EventEmitter {
 
   constructor() {
     super();
-    this.cassie = cassie;
+    this.cassie = cassie; // create instance of cassie class which creates connection to Cassandra
     this.adapters = new Map();
     this.notifiers = new Map();
     this.apiHandlers = new Map();
